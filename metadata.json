@@ -1,0 +1,6 @@
+{
+  "name": "XDEL",
+  "description": "Fast Shizuku-Based Free Fire Reinstaller",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
