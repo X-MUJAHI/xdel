@@ -46,8 +46,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
+        if (!Shizuku.isPreV11() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(0)
+        }
+    }
+
+    private val binderDeadListener = Shizuku.OnBinderDeadListener {
+        // Handle binder dead
+    }
+
+    private val requestPermissionResultListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+        // Handle permission result
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)
+        Shizuku.addBinderDeadListener(binderDeadListener)
+        Shizuku.addRequestPermissionResultListener(requestPermissionResultListener)
+        
         enableEdgeToEdge()
         
         checkPermissions()
@@ -59,6 +77,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Shizuku.removeBinderReceivedListener(binderReceivedListener)
+        Shizuku.removeBinderDeadListener(binderDeadListener)
+        Shizuku.removeRequestPermissionResultListener(requestPermissionResultListener)
     }
 
     private fun checkPermissions() {
@@ -95,12 +120,6 @@ class MainActivity : ComponentActivity() {
         if (permissions.isNotEmpty()) {
             requestPermissionLauncher.launch(permissions.toTypedArray())
         }
-
-        try {
-            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-                Shizuku.requestPermission(0)
-            }
-        } catch (e: Exception) {}
     }
 
     private fun postReinstallNotification() {
@@ -153,15 +172,20 @@ class MainActivity : ComponentActivity() {
         val logs by ReinstallController.logs.collectAsState()
 
         val checkStatus = {
-            if (Shizuku.pingBinder()) {
-                if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                    shizukuState = "Connected"
-                    isShizukuOk = true
+            try {
+                if (Shizuku.pingBinder()) {
+                    if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                        shizukuState = "Connected"
+                        isShizukuOk = true
+                    } else {
+                        shizukuState = "Permission Denied"
+                        isShizukuOk = false
+                    }
                 } else {
-                    shizukuState = "Permission Denied"
+                    shizukuState = "Not Running"
                     isShizukuOk = false
                 }
-            } else {
+            } catch (e: Exception) {
                 shizukuState = "Not Running"
                 isShizukuOk = false
             }
@@ -202,7 +226,19 @@ class MainActivity : ComponentActivity() {
             Text("XDEL", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(24.dp))
             
-            StatusItem("Shizuku", shizukuState, isShizukuOk)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                StatusItem("Shizuku", shizukuState, isShizukuOk, modifier = Modifier.weight(1f))
+                if (shizukuState == "Permission Denied") {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = { 
+                        try {
+                            Shizuku.requestPermission(0)
+                        } catch (e: Exception) {}
+                    }) {
+                        Text("GRANT")
+                    }
+                }
+            }
             StatusItem("Free Fire", freefireState, freefireState == "Installed")
             
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -259,11 +295,9 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun StatusItem(title: String, status: String, isOk: Boolean) {
+    fun StatusItem(title: String, status: String, isOk: Boolean, modifier: Modifier = Modifier) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
+            modifier = modifier.padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(title, fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
