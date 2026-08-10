@@ -73,9 +73,34 @@ class MainActivity : ComponentActivity() {
             postReinstallNotification()
         }
         
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!android.os.Environment.isExternalStorageManager()) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.addCategory("android.intent.category.DEFAULT")
+                    intent.data = android.net.Uri.parse(String.format("package:%s", packageName))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    val intent = Intent()
+                    intent.action = android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+                    startActivity(intent)
+                }
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
+        
         if (permissions.isNotEmpty()) {
             requestPermissionLauncher.launch(permissions.toTypedArray())
         }
+
+        try {
+            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+                Shizuku.requestPermission(0)
+            }
+        } catch (e: Exception) {}
     }
 
     private fun postReinstallNotification() {
@@ -135,7 +160,6 @@ class MainActivity : ComponentActivity() {
                 } else {
                     shizukuState = "Permission Denied"
                     isShizukuOk = false
-                    Shizuku.requestPermission(0)
                 }
             } else {
                 shizukuState = "Not Running"
