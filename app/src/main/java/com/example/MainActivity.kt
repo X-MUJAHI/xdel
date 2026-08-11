@@ -47,9 +47,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val binderReceivedListener = Shizuku.OnBinderReceivedListener {
-        if (!Shizuku.isPreV11() && Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
-            Shizuku.requestPermission(0)
-        }
+        // Binder received, status will be updated by the checkStatus loop
     }
 
     private val binderDeadListener = Shizuku.OnBinderDeadListener {
@@ -168,6 +166,8 @@ class MainActivity : ComponentActivity() {
         var isApkOk by remember { mutableStateOf(false) }
         var freefireState by remember { mutableStateOf("Checking...") }
         
+        var hasRequestedShizuku by remember { mutableStateOf(false) }
+
         val isRunning by ReinstallController.isRunning.collectAsState()
         val logs by ReinstallController.logs.collectAsState()
 
@@ -180,6 +180,10 @@ class MainActivity : ComponentActivity() {
                     } else {
                         shizukuState = "Permission Denied"
                         isShizukuOk = false
+                        if (!hasRequestedShizuku) {
+                            hasRequestedShizuku = true
+                            try { Shizuku.requestPermission(0) } catch (e: Exception) {}
+                        }
                     }
                 } else {
                     shizukuState = "Not Running"
