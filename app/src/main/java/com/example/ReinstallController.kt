@@ -66,6 +66,35 @@ object ReinstallController {
             val isInstalled = runShellCommand("pm path $TARGET_PACKAGE").isNotBlank()
             
             if (isInstalled) {
+                // Backup guest100067.dat before uninstalling
+                val guestFile = java.io.File("/storage/emulated/0/xdel/x/guest100067.dat")
+                val yDir = java.io.File("/storage/emulated/0/xdel/y")
+                
+                if (guestFile.exists()) {
+                    log("Found guest100067.dat, backing up...")
+                    if (!yDir.exists()) yDir.mkdirs()
+                    
+                    var destFile = java.io.File(yDir, "guest100067.dat")
+                    var counter = 1
+                    while (destFile.exists()) {
+                        destFile = java.io.File(yDir, "guest100067($counter).dat")
+                        counter++
+                    }
+                    
+                    try {
+                        val moved = guestFile.renameTo(destFile)
+                        if (moved) {
+                            log("Moved backup to ${destFile.name}")
+                        } else {
+                            guestFile.copyTo(destFile, overwrite = true)
+                            guestFile.delete()
+                            log("Copied backup to ${destFile.name}")
+                        }
+                    } catch (e: Exception) {
+                        log("Warning: Failed to backup guest file: ${e.message}")
+                    }
+                }
+
                 log("Removing $TARGET_PACKAGE...")
                 val startUninstall = System.currentTimeMillis()
                 val uninstallResult = runShellCommand("pm uninstall $TARGET_PACKAGE")

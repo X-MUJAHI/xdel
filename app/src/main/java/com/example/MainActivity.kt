@@ -146,8 +146,8 @@ class MainActivity : ComponentActivity() {
 
     private fun createXdelDirectories() {
         try {
-            arrayOf("xdel", "x", "y").forEach {
-                val dir = File("/storage/emulated/0/$it")
+            arrayOf("/storage/emulated/0/xdel", "/storage/emulated/0/xdel/x", "/storage/emulated/0/xdel/y").forEach {
+                val dir = File(it)
                 if (!dir.exists()) dir.mkdirs()
             }
         } catch (e: Exception) {
@@ -250,8 +250,8 @@ class MainActivity : ComponentActivity() {
             }
             
             xdelState = if (File("/storage/emulated/0/xdel").exists()) "Exists" else "Not Found"
-            xState = if (File("/storage/emulated/0/x").exists()) "Exists" else "Not Found"
-            yState = if (File("/storage/emulated/0/y").exists()) "Exists" else "Not Found"
+            xState = if (File("/storage/emulated/0/xdel/x").exists()) "Exists" else "Not Found"
+            yState = if (File("/storage/emulated/0/xdel/y").exists()) "Exists" else "Not Found"
 
             try {
                 packageManager.getPackageInfo(ReinstallController.TARGET_PACKAGE, 0)
