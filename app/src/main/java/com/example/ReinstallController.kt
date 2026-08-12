@@ -36,11 +36,14 @@ object ReinstallController {
         _progress.value = message
     }
 
-    suspend fun startReinstall() = withContext(Dispatchers.IO) {
+    suspend fun startReinstall(context: android.content.Context) = withContext(Dispatchers.IO) {
         if (_isRunning.value) return@withContext
         _isRunning.value = true
         clearLogs()
         log("XDEL started")
+
+        val prefs = context.getSharedPreferences("xdel_prefs", android.content.Context.MODE_PRIVATE)
+        val useInstallPrompt = prefs.getBoolean("installPrompt", false)
 
         try {
             if (!Shizuku.pingBinder()) {
@@ -80,15 +83,30 @@ object ReinstallController {
 
             log("Installing APK...")
             val startInstall = System.currentTimeMillis()
-            val installResult = runShellCommand("pm install -r -d $APK_PATH")
-            val installTime = (System.currentTimeMillis() - startInstall) / 1000.0
             
-            if (installResult.contains("Success", ignoreCase = true)) {
-                log("Installation completed in ${String.format("%.1f", installTime)} s")
-            } else {
-                log("Installation failed: $installResult")
+            if (useInstallPrompt) {
+                log("Opening system package installer...")
+                val apkUri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
+                intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
+                intent.addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                log("Please complete the installation in the prompt.")
+                // We won't be able to easily wait for the prompt to finish. We'll just exit here.
                 _isRunning.value = false
                 return@withContext
+            } else {
+                val installResult = runShellCommand("pm install -r -d $APK_PATH")
+                val installTime = (System.currentTimeMillis() - startInstall) / 1000.0
+                
+                if (installResult.contains("Success", ignoreCase = true)) {
+                    log("Installation completed in ${String.format("%.1f", installTime)} s")
+                } else {
+                    log("Installation failed: $installResult")
+                    _isRunning.value = false
+                    return@withContext
+                }
             }
 
             log("Verifying installation...")

@@ -40,7 +40,7 @@ class ReinstallService : Service() {
             
             scope.launch {
                 launch(Dispatchers.IO) {
-                    ReinstallController.startReinstall()
+                    ReinstallController.startReinstall(this@ReinstallService)
                 }
                 
                 ReinstallController.progress.collectLatest { progress ->
