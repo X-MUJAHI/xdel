@@ -232,16 +232,6 @@ class MainActivity : ComponentActivity() {
             
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 StatusItem("Shizuku", shizukuState, isShizukuOk, modifier = Modifier.weight(1f))
-                if (shizukuState == "Permission Denied") {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { 
-                        try {
-                            Shizuku.requestPermission(0)
-                        } catch (e: Exception) {}
-                    }) {
-                        Text("GRANT")
-                    }
-                }
             }
             StatusItem("Free Fire", freefireState, freefireState == "Installed")
             
@@ -254,6 +244,29 @@ class MainActivity : ComponentActivity() {
             }
             
             Spacer(modifier = Modifier.height(24.dp))
+            
+            if (!isShizukuOk) {
+                Button(
+                    onClick = { 
+                        try {
+                            if (Shizuku.pingBinder()) {
+                                Shizuku.requestPermission(0)
+                            } else {
+                                this@MainActivity.requestPermissions(arrayOf("moe.shizuku.manager.permission.API_V23"), 0)
+                                val intent = packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+                                if (intent != null) {
+                                    startActivity(intent)
+                                }
+                            }
+                        } catch (e: Exception) {}
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(if (shizukuState == "Not Running") "OPEN SHIZUKU / FIX PERMISSION" else "REQUEST SHIZUKU PERMISSION")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             
             Button(
                 onClick = {
